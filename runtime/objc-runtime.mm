@@ -1,4 +1,4 @@
-/*
+/*
  * Copyright (c) 1999-2007 Apple Inc.  All Rights Reserved.
  * 
  * @APPLE_LICENSE_HEADER_START@
@@ -573,7 +573,7 @@ void objc_setAssociatedObject(id object, const void *key, id value, objc_Associa
 
 void objc_removeAssociatedObjects(id object) 
 {
-    if (object && object->hasAssociatedObjects()) {
+    if (object && object->hasAssociatedObjects()) { // 通过标记位 has_assoc 来确认存在关联对象，避免不必要的方法调用
         _object_remove_assocations(object);
     }
 }

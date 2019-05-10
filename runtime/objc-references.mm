@@ -170,13 +170,13 @@ namespace objc_references_support {
     typedef hash_map<disguised_ptr_t, ObjectAssociationMap *> AssociationsHashMap;
 #else
     typedef ObjcAllocator<std::pair<void * const, ObjcAssociation> > ObjectAssociationMapAllocator;
-    class ObjectAssociationMap : public std::map<void *, ObjcAssociation, ObjectPointerLess, ObjectAssociationMapAllocator> {
+    class ObjectAssociationMap : public std::map<void *, ObjcAssociation, ObjectPointerLess, ObjectAssociationMapAllocator> { // 保存了从 key 到关联对象 ObjcAssociation 的映射
     public:
         void *operator new(size_t n) { return ::malloc(n); }
         void operator delete(void *ptr) { ::free(ptr); }
     };
     typedef ObjcAllocator<std::pair<const disguised_ptr_t, ObjectAssociationMap*> > AssociationsHashMapAllocator;
-    class AssociationsHashMap : public unordered_map<disguised_ptr_t, ObjectAssociationMap *, DisguisedPointerHash, DisguisedPointerEqual, AssociationsHashMapAllocator> {
+    class AssociationsHashMap : public unordered_map<disguised_ptr_t, ObjectAssociationMap *, DisguisedPointerHash, DisguisedPointerEqual, AssociationsHashMapAllocator> { // 用于保存从对象的 disguised_ptr_t 到 ObjectAssociationMap 的映射
     public:
         void *operator new(size_t n) { return ::malloc(n); }
         void operator delete(void *ptr) { ::free(ptr); }
@@ -190,11 +190,11 @@ using namespace objc_references_support;
 // Allocating an instance acquires the lock, and calling its assocations()
 // method lazily allocates the hash table.
 
-spinlock_t AssociationsManagerLock;
+spinlock_t AssociationsManagerLock; // 自旋锁，保证线程安全
 
-class AssociationsManager {
+class AssociationsManager { // 包装类，添加锁，保证线程安全
     // associative references: object pointer -> PtrPtrHashMap.
-    static AssociationsHashMap *_map;
+    static AssociationsHashMap *_map; // AssociationsHashMap 用于保存从对象的 disguised_ptr_t 到 ObjectAssociationMap 的映射
 public:
     AssociationsManager()   { AssociationsManagerLock.lock(); }
     ~AssociationsManager()  { AssociationsManagerLock.unlock(); }
@@ -207,6 +207,19 @@ public:
 };
 
 AssociationsHashMap *AssociationsManager::_map = NULL;
+
+//typedef OBJC_ENUM(uintptr_t, objc_AssociationPolicy) {
+//    OBJC_ASSOCIATION_ASSIGN = 0,           /**< Specifies a weak reference to the associated object. */
+//    OBJC_ASSOCIATION_RETAIN_NONATOMIC = 1, /**< Specifies a strong reference to the associated object.
+//                                            *   The association is not made atomically. */
+//    OBJC_ASSOCIATION_COPY_NONATOMIC = 3,   /**< Specifies that the associated object is copied.
+//                                            *   The association is not made atomically. */
+//    OBJC_ASSOCIATION_RETAIN = 01401,       /**< Specifies a strong reference to the associated object.
+//                                            *   The association is made atomically. */
+//    OBJC_ASSOCIATION_COPY = 01403          /**< Specifies that the associated object is copied.
+//                                            *   The association is made atomically. */
+//}
+
 
 // expanded policy bits.
 
@@ -263,11 +276,12 @@ static void releaseValue(id value, uintptr_t policy) {
 }
 
 struct ReleaseValue {
-    void operator() (ObjcAssociation &association) {
+    void operator() (ObjcAssociation &association) { // 重载()操作符
         releaseValue(association.value(), association.policy());
     }
 };
 
+// 参数 policy -> objc_AssociationPolicy -> runtime.h
 void _object_set_associative_reference(id object, void *key, id value, uintptr_t policy) {
     // retain the new value (if any) outside the lock.
     ObjcAssociation old_association(0, nil);
@@ -276,7 +290,7 @@ void _object_set_associative_reference(id object, void *key, id value, uintptr_t
         AssociationsManager manager;
         AssociationsHashMap &associations(manager.associations());
         disguised_ptr_t disguised_object = DISGUISE(object);
-        if (new_value) {
+        if (new_value) { // 设置/更新关联对象的值
             // break any existing association.
             AssociationsHashMap::iterator i = associations.find(disguised_object);
             if (i != associations.end()) {
@@ -296,7 +310,7 @@ void _object_set_associative_reference(id object, void *key, id value, uintptr_t
                 (*refs)[key] = ObjcAssociation(policy, new_value);
                 object->setHasAssociatedObjects();
             }
-        } else {
+        } else { // 删除一个关联对象
             // setting the association to nil breaks the association.
             AssociationsHashMap::iterator i = associations.find(disguised_object);
             if (i !=  associations.end()) {
@@ -304,13 +318,13 @@ void _object_set_associative_reference(id object, void *key, id value, uintptr_t
                 ObjectAssociationMap::iterator j = refs->find(key);
                 if (j != refs->end()) {
                     old_association = j->second;
-                    refs->erase(j);
+                    refs->erase(j); // 删除元素
                 }
             }
         }
     }
     // release the old value (outside of the lock).
-    if (old_association.hasValue()) ReleaseValue()(old_association);
+    if (old_association.hasValue()) ReleaseValue()(old_association); // 释放对象
 }
 
 void _object_remove_assocations(id object) {
@@ -329,9 +343,9 @@ void _object_remove_assocations(id object) {
             }
             // remove the secondary table.
             delete refs;
-            associations.erase(i);
+            associations.erase(i);//从hash表中删除元素
         }
     }
     // the calls to releaseValue() happen outside of the lock.
-    for_each(elements.begin(), elements.end(), ReleaseValue());
+    for_each(elements.begin(), elements.end(), ReleaseValue()); // 释放删除的对象
 }

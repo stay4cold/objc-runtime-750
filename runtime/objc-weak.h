@@ -81,7 +81,7 @@ struct weak_entry_t {
     DisguisedPtr<objc_object> referent;
     union {
         struct {
-            weak_referrer_t *referrers;
+            weak_referrer_t *referrers; // weak变量的指针个数超过4个
             uintptr_t        out_of_line_ness : 2;
             uintptr_t        num_refs : PTR_MINUS_2;
             uintptr_t        mask;
@@ -89,7 +89,7 @@ struct weak_entry_t {
         };
         struct {
             // out_of_line_ness field is low bits of inline_referrers[1]
-            weak_referrer_t  inline_referrers[WEAK_INLINE_COUNT];
+            weak_referrer_t  inline_referrers[WEAK_INLINE_COUNT]; // weak变量的指针个数不超过4个
         };
     };
 
@@ -117,10 +117,10 @@ struct weak_entry_t {
  * and weak_entry_t structs as their values.
  */
 struct weak_table_t {
-    weak_entry_t *weak_entries;
+    weak_entry_t *weak_entries;// 保存了所有指向指定对象的 weak 指针，使用的是数组结构
     size_t    num_entries;
-    uintptr_t mask;
-    uintptr_t max_hash_displacement;
+    uintptr_t mask;// 参与判断引用计数辅助量
+    uintptr_t max_hash_displacement;// hash key 最大偏移值
 };
 
 /// Adds an (object, weak pointer) pair to the weak table.

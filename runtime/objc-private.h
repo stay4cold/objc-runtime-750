@@ -67,6 +67,23 @@ union isa_t {
 #if defined(ISA_BITFIELD)
     struct {
         ISA_BITFIELD;  // defined in isa.h
+        
+        //#   define ISA_MASK        0x00007ffffffffff8ULL
+        //#   define ISA_MAGIC_MASK  0x001f800000000001ULL
+        //#   define ISA_MAGIC_VALUE 0x001d800000000001ULL
+        //#   define ISA_BITFIELD                                                        \
+        //uintptr_t nonpointer        : 1;                                         \
+        //uintptr_t has_assoc         : 1;                                         \
+        //uintptr_t has_cxx_dtor      : 1;                                         \
+        //uintptr_t shiftcls          : 44; /*MACH_VM_MAX_ADDRESS 0x7fffffe00000*/ \
+        //uintptr_t magic             : 6;                                         \
+        //uintptr_t weakly_referenced : 1;                                         \
+        //uintptr_t deallocating      : 1;                                         \
+        //uintptr_t has_sidetable_rc  : 1;                                         \
+        //uintptr_t extra_rc          : 8 -> extra_rc 只会保存额外的自动引用计数，对象实际的引用计数会在这个基础上 +1
+
+        
+        
     };
 #endif
 };
@@ -745,7 +762,7 @@ enum { CacheLineSize = 64 };
 // For example, this may be used as StripedMap<spinlock_t>
 // or as StripedMap<SomeStruct> where SomeStruct stores a spin lock.
 template<typename T>
-class StripedMap {
+class ]StripedMap {
 #if TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
     enum { StripeCount = 8 };
 #else

@@ -308,6 +308,12 @@ static void weak_entry_remove(weak_table_t *weak_table, weak_entry_t *entry)
 static weak_entry_t *
 weak_entry_for_referent(weak_table_t *weak_table, objc_object *referent)
 {
+//    struct weak_table_t {
+//        weak_entry_t *weak_entries;
+//        size_t    num_entries;
+//        uintptr_t mask;
+//        uintptr_t max_hash_displacement;
+//    };
     assert(referent);
 
     weak_entry_t *weak_entries = weak_table->weak_entries;
@@ -348,14 +354,18 @@ void
 weak_unregister_no_lock(weak_table_t *weak_table, id referent_id, 
                         id *referrer_id)
 {
+    // 在入口方法中，传入了 weak_table 弱引用表，referent_id 旧对象以及 referent_id 旧对象对应的地址
+    // 用指针去访问 oldObj 和 *location
     objc_object *referent = (objc_object *)referent_id;
     objc_object **referrer = (objc_object **)referrer_id;
 
     weak_entry_t *entry;
 
+    // 如果其对象为 nil，无需取消注册
     if (!referent) return;
 
     if ((entry = weak_entry_for_referent(weak_table, referent))) {
+        // 通过地址来解除引用关联
         remove_referrer(entry, referrer);
         bool empty = true;
         if (entry->out_of_line()  &&  entry->num_refs != 0) {
@@ -369,7 +379,7 @@ weak_unregister_no_lock(weak_table_t *weak_table, id referent_id,
                 }
             }
         }
-
+        // 从弱引用的 zone 表中删除
         if (empty) {
             weak_entry_remove(weak_table, entry);
         }
@@ -397,6 +407,8 @@ weak_register_no_lock(weak_table_t *weak_table, id referent_id,
     if (!referent  ||  referent->isTaggedPointer()) return referent_id;
 
     // ensure that the referenced object is viable
+    // 保证引用对象是否有效
+    // hasCustomRR 方法检查类（包括其父类）中是否含有默认的方法
     bool deallocating;
     if (!referent->ISA()->hasCustomRR()) {
         deallocating = referent->rootIsDeallocating();
@@ -425,13 +437,19 @@ weak_register_no_lock(weak_table_t *weak_table, id referent_id,
     }
 
     // now remember it and where it is being stored
+    // 记录并存储对应引用表 weak_entry
     weak_entry_t *entry;
+    // 对于给定的弱引用查询 weak_table
     if ((entry = weak_entry_for_referent(weak_table, referent))) {
+        // 增加弱引用表于附加对象上
         append_referrer(entry, referrer);
     } 
     else {
+        // 自行创建弱引用表
         weak_entry_t new_entry(referent, referrer);
+        // 如果给定的弱引用表满容，进行自增长
         weak_grow_maybe(weak_table);
+        // 向对象添加弱引用表关联，不进行检查直接修改指针指向
         weak_entry_insert(weak_table, &new_entry);
     }
 

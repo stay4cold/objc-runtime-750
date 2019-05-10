@@ -26,7 +26,7 @@
 #define _OBJC_OBJC_API_H_
 
 #include <Availability.h>
-#include <AvailabilityMacros.h>
+#include <AvailabBlock_descriptorilityMacros.h>
 #include <TargetConditionals.h>
 #include <sys/types.h>
 
